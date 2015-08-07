@@ -219,15 +219,18 @@ change add_flt.vhd to include an adder core you can simulate. As mentioned befor
 need to setup the ieee_proposed library.
 
 If you are having trouble running make sure you run the following steps:
-1. Setup the Xilinx environment. The makefile uses scripts that run different
+1. Clone the GitHub repository
+     git clone https://github.com/ARC-Lab-UF/UAA
+  
+2. Setup the Xilinx environment. The makefile uses scripts that run different
    Xilinx executables from the terminal which requires the Xilinx environment.
-     export LM_LICENSE_FILE=<floating license location if needed>   -- if not already setup
-     source /opt/Xilinx/13.4/ISE_DS/settings64.sh                   -- setup env if not already on path
+     export LM_LICENSE_FILE=<floating license location>   -- if needed and not already done
+     source <ISE_PATH>/settings64.sh                      -- setup env if not already on path
    
-2. Navigate to main directory
-     cd <path to main directory>
+3. Navigate to main directory
+     cd <PROJECT_PATH>/uaa
    
-3. Build or verify
+3. Make with build or verify option
      make build
      make verify
 
