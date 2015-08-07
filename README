@@ -1,0 +1,333 @@
+For: The Unified Accumulator Architecture: A Configurable, Portable, and Extensible Floating-Point Accumulator
+
+By:  David Wilson, Greg Stitt, University of Florida
+
+License Statement:  GPL Version 3
+---------------------------------
+Copyright (c) 2015 University of Florida
+
+This file is part of uaa.
+
+uaa is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+uaa is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+For the details of the GNU General Public License, see the included
+gpl.txt file, or go to http://www.gnu.org/licenses/.
+           
+Required Tools and Version Numbers:
+-----------------------------------
+ISE Design Suite (Tested in 13.0+)
+Quartus II (Tested in 12.0+)
+ieee_proposed library for simulation
+
+
+Overview of Files:
+------------------
+build.tcl - ise script that implements design
+isim.tcl  - isim script that runs the testbench simulation
+sim.prj   - ise project file used for simulation purposes
+makefile  - make files with the build and verify targets
+gpl.txt   - contains the gpl 3.0 license
+src/      - folder containing all of the source files
+build/    - folder created by makefile to hold compilation files
+sim/      - folder created by makefile to hold simulation files
+
+Overview of VHDL Source Files:
+-----------------------------
+Top Level Entity
+  uaa.vhd                 - Top level entity for the UAA
+  uaa_pkg.vhd             - Package file that defines all accumulator architecture options
+
+Common Entities
+  add_flt.vhd             - Wrapper file that provides common interface for different adder cores
+  flt_pkg.vhd             - Package file containing characteristics about different adder cores
+  add_tree_flt.vhd        - Source file for adder tree
+  add_tree_flt_pkg.vhd    - Package file for adder tree
+  add_wrapper.vhd         - Wrapper file for add_flt providing additional pipeline-related entities
+  delay.vhd               - Source file for shift register entity
+  fifo.vhd                - Source file for fifo entity
+  fifo_core.vhd           - Source file for additional fifo logic
+  ram.vhd                 - Source file for ram entity
+  math_custom.vhd         - Package file containing commonly used math functions
+
+DSA Specific              
+  dsa.vhd                 - Main file for DSA architecture
+  dsa_ctrl.vhd            - Source file for DSA controllers
+  dsa_pkg.vhd             - Package file for DSA
+
+FCBT Specific             
+  fcbt.vhd                - Main file for FCBT architecture
+  fifo2.vhd               - Source file for FCBT buffers
+
+SGA Specific              
+  sga.vhd                 - Main file for SGA architecture
+
+Testbench Specifc         
+  uaa_tb.vhd              - Testbench
+  uaa_tb_pkg.vhd          - Testbench package file
+  uaa_tb_all.vhd          - Testbench testing all three architectures using uaa_tb 
+
+
+Build Instructions:
+-------------------
+Setup the ISE environment and run the command "make build" in the project folder. 
+This should invoke build.tcl from Xilinx's xtclsh, which should compile the core using 
+XST, with the build outputs in the "build" folder.
+
+If you run into problems with this command, create a new project and add the source 
+files. Set the uaa entity as the top-level and run synthesis.
+
+Verification Instructions:
+--------------------------
+Setup the ISE environment and run the command "make verify" in the project folder.
+This should invoke Xilinx's fuse using source VHDL indicated in the provided sim.prj
+to produce a simulation executable x.exe. The executable is then launched and run 
+through commands provided in the isim.tcl. 
+
+Wait until the output indicates that "TEST DSA", "TEST FCBT", and "TEST SGA" have 
+completed. Associated simulation files should be generated in the "sim" folder.
+
+If you run into problems with this command, open any simulator, add the files in the src/
+folder to the project, and select uaa_tb_all.vhd as the testbench. For simulators other
+than ISIM, be sure to add the simulation libraries for Xilinx's floating-point core or
+change add_flt.vhd to include an adder core you can simulate.
+
+Engineering specification with functionality and all interfaces documented (intended for a technical user):
+-----------------------------------------------------------------------------------------------------------
+The top level file uaa has a common port used to interface with all of the accumulation architectures.
+See Section 3.2 of the accompanying paper for more details.
+
+Port Description:
+  clk          : clock input
+  rst          : reset input (asynchronous, active high)
+  hold_output  : The user can assert this signal to prevent the entity from
+                 continuing past a valid output. When hold_output is not
+                 asserted, the output is valid for only a single cycle.
+                 This signal makes it possible to stall the entity if
+                 downstream components can't receive data (active high)
+  ready        : The entity asserts this signal when it is ready to accept
+                 new inputs. If not asserted, external components must hold
+                 the current input or it will be lost (active high)
+  end_of_group : User should be assert on the same cycle as the last input in a
+                 group (active high)
+  input        : Provides parallel_inputs number of width-bit inputs 
+  output       : Accumulated output
+  valid_in     : User should assert when input is valid and ready is
+                 asserted (active high)
+  valid_out    : Entity asserts when the output from the dsa is valid. Unless
+                 the user asserts hold_output, the entity only asserts
+                 valid_out is only asserted for one cycle. (active high)
+
+
+Customization Options and Instructions:
+---------------------------------------
+The top level file uaa has a variety of generics that can be changed to meet one's application.
+See Section 3.1 of the accompanying paper for more details.
+
+Generics Description:
+  arch             : Specifies the type of architecture to use. All possible
+                     options are included in uaa_pkg.vhd
+  width            : The width of the input and output in bits (e.g., 32 bits
+                     for single precision, 64 for double)
+  parallel_inputs  : The number of inputs provided in parallel as input. For
+                     example, if a design can provide 4 inputs every cycle,
+                     this should be 4 to maximize throughput. 
+  add_core_name    : A string representing different optimizations for the
+                     actual adder core. See add_flt.vhd and flt_pkg.vhd for
+                     more information.
+  use_bram         : attempts to use bram when true, uses LUTs or FFs when
+                     false
+  FCBT_max_inputs  : Specifies the maximum number of inputs for the
+                     FCBT architecture. This generic is ignored for other
+                     architectures, which support any number of inputs.
+  FCBT_obuf_size   : Specifies the size of the output buffer for the
+                     FCBT architecture. This generic is ignored for other
+                     architectures, which support any number of inputs.
+           
+Customization Instructions:
+--------------------------
+To make changes to these generics, either manually set the generic values in 
+the ise project or change the constants used in build.tcl, which is used in 
+the make build flow.
+
+Adder Core Addition Instructions:
+--------------------------------
+1) Select a floating-point adder core for the targeted FPGA. 
+This project uses several Xilinx and Altera cores as examples. You may want to 
+create multiple versions of the core with different optimization goals (e.g., 
+speed, area). Make note of the pipeline latencies of each core.
+
+Note that any core can work as long as it has a pipeline latency greater than 
+1 cycle and can be stalled.
+
+2) Open src/flt_pkg.vhd. Modify the add_flt_latency function to define the 
+pipeline latency of each optimization option your are using. e.g. An 
+area-optimized core might have a latency of 7 cycles, whereas a speed-optimized 
+core might have a latency of 14 cycles. The "core_name" string represents a 
+user-defined name for the optimization, which can be used as an input parameter 
+to the top-level entity uaa. If you only have one adder core, simply return 
+the latency of that core while ignoring the core_name string.
+
+3) Open src/add_flt.vhd. Modify the architecture to instantiate a corresponding 
+adder core for each relevant value of the "core_name" string. If you only 
+have one adder core, you can ignore the core_name string.
+
+4) You can now instantiate the floating-point accumulator in uaa.vhd. 
+You can select between different adder core options by specifying the names
+you selected in the "core_name" generic. If you did not use the 
+"core_name" string in add_flt_pkg or add_flt, the "core_name" generic 
+is ignored.
+
+COMMON PROBLEMS:
+The add_tree_flt entity use a recursive structural architecture, which is not
+supported by all simulators. We have tested the code with Modelsim and Xilinx's
+ISIM, which comes with ISE.
+
+Simulations with the provided testbench require installation of fphdl from the 
+ieee_proposed library:
+
+http://www.eda-stds.org/fphdl/
+
+Most new tools already include this library, but if not, we have included the
+library in the ieee_proposed folder.
+
+When targeting older Xilinx FPGAs, you may need to use a flag to force ISE to
+use the new parser. To do this, Put "-use_new_parser yes" in the synthesis 
+properties.
+
+ISE also sometimes has problems setting enum generics, so creating a top_level 
+file that uses the uaa entity may be an alternative if this is a problem.
+
+If you run into problems with "make build", create a new project and add the source 
+files. Set the uaa entity as the top-level and run synthesis.
+
+It has been reported some users run into segmentation faults when using "make verify" which
+appears to be an issue for some versions of ISE on certain systems. If this does occur, try
+running ISIM in GUI mode.
+
+If you run into other problems with "make verify", open any simulator, add the files in 
+the src/ folder to the project, and select uaa_tb_all.vhd as the testbench. For simulators other
+than ISIM, be sure to add the simulation libraries for Xilinx's floating-point core or
+change add_flt.vhd to include an adder core you can simulate. As mentioned before, you may
+need to setup the ieee_proposed library.
+
+If you are having trouble running make sure you run the following steps:
+1. Setup the Xilinx environment. The makefile uses scripts that run different
+   Xilinx executables from the terminal which requires the Xilinx environment.
+     export LM_LICENSE_FILE=<floating license location if needed>   -- if not already setup
+     source /opt/Xilinx/13.4/ISE_DS/settings64.sh                   -- setup env if not already on path
+   
+2. Navigate to main directory
+     cd <path to main directory>
+   
+3. Build or verify
+     make build
+     make verify
+
+Description of Verification Suite:
+----------------------------------
+The verification suite consists of top level testbench (uaa_tb_all.vhd) that instantiates a
+highly customizable testbench (uaa_tb.vhd) for each of the architectures and verifies
+that each architectures produces a correct output.
+
+The uaa_tb.vhd testbench provides numerous generics for controlling the behavior of 
+the simulation. To test multiple architectures, or different configurations of the same 
+architecture, instantiate this testbench multiple times within another testbench. For 
+output, the testbench will report the number of groups that had outputs that exceeded
+both the acceptable percent difference of an estimated accurate result calculated
+through double precision and the sequentially accumulated result. Each individual
+input group will report these differences in a double precision hex string. A user can 
+also test for architectural correctness by asserting test_for_arch, which feeds
+the architectures '1's for inputs, and checks that the output has zero groups with output
+differences from the estimated accurate result calculated with double precision floating 
+point values and from the sequential accumulated result. This test works because using '1's avoids
+floating point rounding issues with vastly different exponents and because the same input
+values negate differences between the sequential order of additions and the architecture's
+order of additions. 
+
+For more information, about each parameter, see the descriptions below:
+
+Port Descriptions:
+  test_name                : Specifies the name of the current test, which the
+                             testbench prints during the simulation.
+  test_for_arch            : Specifies whether the testbench is testing for architectural
+                             correctness by feeding the architectures '1's for inputs.
+                             Using '1's ensures the output is not affected by rounding and 
+                             keeps the order of additions equivalent to the sequential order.
+                             This test should not be asserted with test_for_error.                          
+  test_for_error           : Specifies whether the testbench is testing for error in the
+                             final result by feeding the architectures input values with 
+                             randomized exponent values. Use min_input_exp and max_input_exp 
+                             to limit the range of the input's exponents. This test should  
+                             not be asserted with test_for_arch.
+  arch                     : Specifies the type of architecture to use. All possible
+                             options are included in uaa_pkg.vhd
+  parallel_inputs          : The number of inputs provided in parallel as input. For
+                             example, if a design can provide 4 inputs every cycle,
+                             this should be 4 to maximize throughput.
+  add_core_name            : A string representing different optimizations for the
+                             actual adder core. See add_flt.vhd and flt_pkg.vhd for
+                             more information.
+  use_bram                 : Attempts to use bram when true, uses LUTs when false
+  FCBT_max_inputs          : Specifies the maximum number of inputs for the
+                             FCBT architecture. This generic is ignored for other
+                             architectures, which support any number of inputs.
+  total_groups             : Specifies the total number of groups to test.
+  min_group_size           : Specifies the minimum size of any group. If this value is
+                             not a multiple of parallel_inputs, the testbench will
+                             increase it to the nearest multiple.
+  max_group_size           : Specifies the maximum size of any group. If this value is
+                             not a multiple of parallel_inputs, the testbench will
+                             increase it to the nearest multiple.
+  min_input_exp            : The minimum random value used for an input's exponent.
+                             This parameter is only relevant when test_for_error is asserted
+  max_input_exp            : The maximum random values used for an input's exponent.
+                             This parameter is only relevant when test_for_error is asserted
+  input_delay_prob         : The probability that and input will be delayed (i.e. will
+                             not appear one cycle after the previous input.
+  min_input_delay          : If an input is delayed, this specifies the minimum random
+                             cycle delay.
+  max_input_delay          : If an input is delayed, this specifies the maximum random
+                             cycle delay.
+  group_delay_prob         : The probability that there will be a delay in between
+                             consecutive input groups.
+  min_group_delay          : If a group is delayed, this specifies the minimum random
+                             cycle delay.
+  max_group_delay          : If a group is delayed, this specifies the maximum random
+                             cycle delay.
+  hold_output_prob         : The probability during any cycle that hold_ouput will be
+                             asserted.
+  min_hold_output_delay    : If hold_output is asserted, this specifies the
+                             minimum random cycle delay before deassertion.
+  max_hold_output_delay    : If hold_output is asserted, this specifies the
+                             maximum random cycle delay before deassertion.
+  junk_input_prob          : The probability that a junk value will be used as input
+                             while accumulator is not ready (i.e. ready = '0').
+  acceptable_error_percent : Specifies acceptable percentage difference between the actual 
+                             output and an estimated correct output due to floating rounding. 
+                             Also, specifies acceptable percentage difference between the actual 
+                             output and a sequentially accumulated output due to assumption of 
+                             associativity.                           
+  print_status             : When asserted, simulation prints information that specifies
+                             the current status. Useful for long simulations.
+  start_group              : Use its falling_edge to indicate the beginning
+                             of a new group, and apply changes to parameter port signals
+
+Known Limitations:
+------------------
+- There are a variety of changes that could be applied to each architecture implementation that 
+  could better optimize the architecture toward a specific goal, but have not been implemented.
+  For example, the FCBT has a lower clock rate that could mitigated through further pipelining
+  of the control and the datapath. Similarly, the FCBT uses large multiplixers that greatly reduce
+  the clock speed as the number of inputs increases, which could be replaced by an alternative
+  implementation to make the design more scalable.
+- The testbench's method of verification relies on estimating the accurate result with double 
+  precision values. This method is therefore incapable of accurately determining error when tested 
+  against double precision adder cores.
